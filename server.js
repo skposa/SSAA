@@ -4,9 +4,10 @@ const PORT       = process.env.PORT || 3000;
 const DATA_DIR   = process.env.DATA_DIR || path.join(__dirname, "data");
 const ACCESS_CODE= process.env.ACCESS_CODE || "19.13.008.2";
 const ADMIN_USER = (process.env.ADMIN_USER || "ssa_admin").toLowerCase();
-const ADMIN_PASS = process.env.ADMIN_PASS || "SSA@Admin#2026";
+const ADMIN_PASS = (process.env.ADMIN_PASS || "SSA@Admin#2026");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 const FX_KEYS = ["echo", "radio", "garble", "bass", "loud"];
+const FREE_FX = ["echo"]; // الميزات المجانية دائماً
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 let db = { users: {}, sessions: {} };
@@ -84,7 +85,8 @@ async function api(req, res, url) {
       if (pass.length < 4 || pass.length > 100) return send(res, 400, { error: "كلمة المرور 4 أحرف على الأقل" });
       if (key === ADMIN_USER || db.users[key]) return send(res, 409, { error: "اسم المستخدم مستخدم من قبل" });
       const salt = crypto.randomBytes(16).toString("hex");
-      db.users[key] = { username: name, salt, pass: hashPass(pass, salt), id: newId(), features: true, ban: null, fx: {}, volume: 100, created: Date.now() };
+      // ← المستخدم الجديد: الميزات مغلقة افتراضياً (فقط التكرار مجاني)
+      db.users[key] = { username: name, salt, pass: hashPass(pass, salt), id: newId(), features: false, ban: null, fx: {}, volume: 100, created: Date.now() };
       const token = newSession("user", key);
       save();
       return send(res, 200, { token, me: view(db.users[key]) });
@@ -113,8 +115,11 @@ async function api(req, res, url) {
   if (route === "settings") {
     if (a.role !== "user") return send(res, 403, { error: "غير مسموح" });
     if (banState(a.user)) return send(res, 403, { error: "الحساب محظور" });
-    if (a.user.features !== false && b.fx && typeof b.fx === "object") {
-      a.user.fx = {}; FX_KEYS.forEach(k => { if (b.fx[k] === true) a.user.fx[k] = true; });
+    // ← حفظ الإعدادات: مسموح فقط بالميزات المصرح بها (echo مجاني، والبقية تحتاج features)
+    if (b.fx && typeof b.fx === "object") {
+      const allowed = a.user.features !== false ? FX_KEYS : FREE_FX;
+      a.user.fx = {};
+      allowed.forEach(k => { if (b.fx[k] === true) a.user.fx[k] = true; });
     }
     if (typeof b.volume === "number" && isFinite(b.volume)) a.user.volume = Math.max(0, Math.min(1008, Math.round(b.volume)));
     save(); return send(res, 200, { ok: true });
@@ -141,7 +146,11 @@ async function api(req, res, url) {
     } else if (route === "admin/unban") u.ban = null;
     else if (route === "admin/features") {
       u.features = !!b.on;
-      if (!u.features) u.fx = {};
+      // ← عند غلق الميزات: نحافظ على echo (مجاني) ونمسح البقية
+      if (!u.features) {
+        const keepEcho = u.fx && u.fx.echo === true;
+        u.fx = keepEcho ? { echo: true } : {};
+      }
     } else return send(res, 404, { error: "غير موجود" });
 
     save(); return send(res, 200, { user: adminView(u) });
