@@ -5,6 +5,7 @@ function bad(el){ el.classList.remove("shake"); void el.offsetWidth; el.classLis
 function fmt(ts){ return new Date(ts).toLocaleString("ar", {dateStyle:"medium", timeStyle:"short"}); }
 
 const TOKEN_KEY = "ssa_token_v2", CODE_KEY = "ssa_code_v2";
+const FREE_FX = ["echo"]; // ← الميزات المجانية دائماً (يجب أن تطابق server.js)
 let token = localStorage.getItem(TOKEN_KEY), me = null;
 
 async function api(path, body){
@@ -140,21 +141,31 @@ function buildEffects(){
     e.input.connect(up); up.connect(clip); clip.connect(e.output);
     clip.connect(d1); d1.connect(f1); f1.connect(d1); d1.connect(w); clip.connect(d2); d2.connect(f2); f2.connect(d2); d2.connect(w); w.connect(e.output); effects.loud=e; }
 }
+
+// ← هل المستخدم يملك كل الميزات (فتح من الإدارة)؟
 function featuresOn(){ return me && me.features !== false; }
+// ← هل هذه الميزة مسموحة له؟ (echo مجاني، البقية تحتاج features)
+function canUseFeature(k){ return FREE_FX.includes(k) || featuresOn(); }
+
 function rewire(){
   if (!ctx) return;
   try{ src.disconnect(); }catch(e){}
   Object.values(effects).forEach(e => { try{ e.output.disconnect(); }catch(_){} });
   let prev = src;
-  ["echo","radio","garble","bass","loud"].forEach(k => { if (active[k] && featuresOn()){ prev.connect(effects[k].input); prev = effects[k].output; } });
+  ["echo","radio","garble","bass","loud"].forEach(k => { if (active[k] && canUseFeature(k)){ prev.connect(effects[k].input); prev = effects[k].output; } });
   prev.connect(master);
 }
 function setStatus(){
   $("#status").textContent = muted ? "المايك مقفول" : "الميكروفون يعمل — صوتك يخرج من الهاتف";
 }
 
+// ← إصلاح الصدى: echoCancellation:true يكسر حلقة السماعة→المايك
 function getStream(){
-  return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false}});
+  return navigator.mediaDevices.getUserMedia({audio:{
+    echoCancellation: true,
+    noiseSuppression: false,
+    autoGainControl: false
+  }});
 }
 function attachTrack(){
   track.onended = () => setTimeout(reacquire, 300);
@@ -252,17 +263,23 @@ function draw(){
   })();
 }
 
-function paintFx(){ document.querySelectorAll(".fx").forEach(b => b.classList.toggle("on", !!active[b.dataset.fx] && featuresOn())); }
+function paintFx(){
+  document.querySelectorAll(".fx").forEach(b => b.classList.toggle("on", !!active[b.dataset.fx] && canUseFeature(b.dataset.fx)));
+}
 function applyFeatureLock(){
   const on = featuresOn();
   $("#lockMsg").style.display = on ? "none" : "block";
-  document.querySelectorAll(".fx").forEach(b => b.disabled = !on);
-  if (!on) active = {};
-  paintFx(); rewire();
+  // كل زر: مقفول إذا كانت الميزة تحتاج صلاحية والمستخدم لا يملكها
+  document.querySelectorAll(".fx").forEach(b => b.disabled = !canUseFeature(b.dataset.fx));
+  // تنظيف: إذا كانت ميزة مدفوعة مفعّلة والمستخدم لا يملكها → نحذفها من active (نُبقي echo)
+  let changed = false;
+  Object.keys(active).forEach(k => { if (active[k] && !canUseFeature(k)) { delete active[k]; changed = true; } });
+  paintFx();
+  if (changed) rewire();
 }
 document.querySelectorAll(".fx").forEach(b => {
   b.onclick = () => {
-    if (!featuresOn()) return;
+    if (!canUseFeature(b.dataset.fx)) return;
     active[b.dataset.fx] = !active[b.dataset.fx];
     paintFx(); rewire(); saveSettings();
   };
@@ -286,7 +303,7 @@ function renderAdmin(){
   cb.textContent = b ? (b.permanent ? "محظور دائمًا" : "محظور حتى " + fmt(b.until)) : "غير محظور";
   const cf = $("#cFeat");
   cf.className = "badge " + (shown.features ? "ok" : "bad");
-  cf.textContent = shown.features ? "مفتوحة" : "مغلقة";
+  cf.textContent = shown.features ? "مفتوحة" : "مغلقة (التكرار فقط)";
 }
 async function searchUser(){
   const id = $("#sId").value.trim(); $("#sErr").textContent = "";
@@ -309,7 +326,7 @@ $("#bTemp").onclick = () => {
 $("#bPerm").onclick  = () => act("ban", {permanent:true}, "تم الحظر الدائم");
 $("#bUnban").onclick = () => act("unban", {}, "تم فتح الحظر");
 $("#bOn").onclick    = () => act("features", {on:true}, "تم فتح جميع الميزات");
-$("#bOff").onclick   = () => act("features", {on:false}, "تم غلق جميع الميزات");
+$("#bOff").onclick   = () => act("features", {on:false}, "تم غلق جميع الميزات (يبقى التكرار متاحاً)");
 
 let syncing = false;
 async function sync(){
@@ -333,4 +350,4 @@ async function sync(){
 }
 setInterval(sync, 1500);
 
-if (sessionStorage.getItem(CODE_KEY)) afterCode(); else show("#s-code");  
+if (sessionStorage.getItem(CODE_KEY)) afterCode(); else show("#s-code");
