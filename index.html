@@ -95,6 +95,7 @@ canvas#meter{width:100%;height:46px;display:block;margin-top:8px}
 .fx{position:relative;text-align:right;padding:14px 14px 14px 10px;border-radius:14px;border:1px solid var(--line);background:rgba(0,0,0,.4);color:var(--bone);font:inherit;cursor:pointer;transition:all .2s;min-height:78px;overflow:hidden}
 .fx strong{display:block;font-size:1.02rem}
 .fx small{color:var(--ash);font-size:.78rem}
+.fx .tag{display:inline-block;font-size:.68rem;font-weight:700;color:#7be0a8;background:rgba(123,224,168,.14);border:1px solid rgba(123,224,168,.4);border-radius:6px;padding:1px 6px;margin-inline-start:6px;vertical-align:middle}
 .fx::after{content:"";position:absolute;left:12px;top:12px;width:9px;height:9px;border-radius:50%;background:#2c2638;transition:all .2s}
 .fx.on{border-color:var(--ember);background:linear-gradient(150deg,rgba(196,21,63,.28),rgba(91,45,143,.22));box-shadow:0 0 28px rgba(196,21,63,.35),inset 0 0 18px rgba(196,21,63,.15)}
 .fx.on::after{background:#ff4d79;box-shadow:0 0 12px #ff4d79}
@@ -171,7 +172,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
       <div class="chip" style="padding:6px 12px" id="who"></div>
     </div>
     <div class="panel">
-      <div id="lockMsg" class="lock" style="display:none">ميزات التأثيرات مغلقة على حسابك من الإدارة</div>
+      <div id="lockMsg" class="lock" style="display:none">ميزة التكرار متاحة مجاناً — التأثيرات الأخرى تحتاج فتحاً من الإدارة</div>
       <div class="mic">
         <div class="orb" id="orb">
           <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
@@ -186,7 +187,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
       </div>
       <p class="fxhead">التأثيرات — اضغط لتفعيل أي تأثير وسيُضاف إلى صوتك</p>
       <div class="fxgrid">
-        <button class="fx" data-fx="echo"><strong>التكرار</strong><small>صدى يعيد صوتك عدة مرات</small></button>
+        <button class="fx" data-fx="echo"><strong>التكرار<span class="tag">مجاني</span></strong><small>صدى يعيد صوتك عدة مرات</small></button>
         <button class="fx" data-fx="radio"><strong>الترددات اللاسلكية</strong><small>صوت جهاز لاسلكي</small></button>
         <button class="fx" data-fx="garble"><strong>التغويش</strong><small>تشويش وتشويه الصوت</small></button>
         <button class="fx" data-fx="bass"><strong>الباس</strong><small>تضخيم الترددات الغليظة</small></button>
@@ -197,7 +198,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
         <input type="range" id="vol" min="0" max="1008" step="1" value="100" aria-label="مستوى الصوت">
         <div class="vscale"><span>0</span><span>100 = طبيعي</span><span>1008</span></div>
       </div>
-      <p class="note">الصوت يخرج من نفس الهاتف. استخدم سماعة الأذن لتجنّب الصفير (الارتجاع) عند التشغيل.</p>
+      <p class="note">الصوت يخرج من نفس الهاتف. استخدم سماعة الأذن لأفضل تجربة وتجنّب الارتجاع.</p>
     </div>
   </section>
 
